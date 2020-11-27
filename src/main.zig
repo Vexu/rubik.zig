@@ -164,7 +164,7 @@ pub const Cube = packed struct {
 
         self.f[6..8].* = self.u[6..8].*;
         self.f[0] = self.u[0];
-        
+
         self.u[6..8].* = tmp[0..2].*;
         self.u[0] = tmp[2];
     }
@@ -182,7 +182,7 @@ pub const Cube = packed struct {
 
         self.f[6..8].* = self.d[6..8].*;
         self.f[0] = self.d[0];
-        
+
         self.d[6..8].* = tmp[0..2].*;
         self.d[0] = tmp[2];
     }
@@ -199,7 +199,7 @@ pub const Cube = packed struct {
 
         self.r[6..8].* = self.u[4..6].*;
         self.r[0] = self.u[6];
-        
+
         self.u[4..7].* = tmp;
     }
 
@@ -215,7 +215,7 @@ pub const Cube = packed struct {
 
         self.r[6..8].* = self.d[0..2].*;
         self.r[0] = self.d[2];
-        
+
         self.d[0..3].* = tmp;
     }
 
@@ -231,7 +231,7 @@ pub const Cube = packed struct {
 
         self.b[6..8].* = self.u[2..4].*;
         self.b[0] = self.u[4];
-        
+
         self.u[2..5].* = tmp;
     }
 
@@ -247,7 +247,7 @@ pub const Cube = packed struct {
 
         self.b[6..8].* = self.d[2..4].*;
         self.b[0] = self.d[4];
-        
+
         self.d[2..5].* = tmp;
     }
 
@@ -263,7 +263,7 @@ pub const Cube = packed struct {
 
         self.l[6..8].* = self.u[0..2].*;
         self.l[0] = self.u[2];
-        
+
         self.u[0..3].* = tmp;
     }
 
@@ -279,7 +279,7 @@ pub const Cube = packed struct {
 
         self.l[6..8].* = self.d[4..6].*;
         self.l[0] = self.d[6];
-        
+
         self.d[4..7].* = tmp;
     }
 
@@ -301,6 +301,79 @@ pub const Cube = packed struct {
         self.b[4..7].* = self.l[4..7].*;
         self.l[4..7].* = self.f[4..7].*;
         self.f[4..7].* = tmp;
+    }
+
+    pub fn shuffleLog(self: *Cube, seed: u64, buf: *[32]fn (*Cube) void) []fn (*Cube) void {
+        var prng = std.rand.DefaultPrng.init(seed);
+        const moves = prng.random.intRangeAtMost(u8, 10, 32);
+        var i: u8 = 0;
+        var prev: u8 = 99;
+        while (i < moves) {
+            const next = prng.random.intRangeAtMost(u8, 0, 11);
+            if ((next + 6) % 12 == prev) {
+                continue;
+            }
+            prev = next;
+
+            switch (next) {
+                0 => {
+                    buf[i] = rotU;
+                    self.rotU();
+                },
+                1 => {
+                    buf[i] = rotL;
+                    self.rotL();
+                },
+                2 => {
+                    buf[i] = rotF;
+                    self.rotF();
+                },
+                3 => {
+                    buf[i] = rotR;
+                    self.rotR();
+                },
+                4 => {
+                    buf[i] = rotB;
+                    self.rotB();
+                },
+                5 => {
+                    buf[i] = rotD;
+                    self.rotD();
+                },
+                6 => {
+                    buf[i] = rotUPrime;
+                    self.rotUPrime();
+                },
+                7 => {
+                    buf[i] = rotLPrime;
+                    self.rotLPrime();
+                },
+                8 => {
+                    buf[i] = rotFPrime;
+                    self.rotFPrime();
+                },
+                9 => {
+                    buf[i] = rotRPrime;
+                    self.rotRPrime();
+                },
+                10 => {
+                    buf[i] = rotBPrime;
+                    self.rotBPrime();
+                },
+                11 => {
+                    buf[i] = rotDPrime;
+                    self.rotDPrime();
+                },
+                else => unreachable,
+            }
+            i += 1;
+        }
+        return buf[0..i];
+    }
+
+    pub fn shuffle(self: *Cube, seed: u64) void {
+        var buf: [32]fn (*Cube) void = undefined;
+        _ = self.shuffleLog(seed, &buf);
     }
 };
 
@@ -345,4 +418,40 @@ test "cross" {
     counterclockwise.rotBPrime();
 
     expect(clockwise.eql(counterclockwise));
+}
+
+test "shuffle" {
+    var c: Cube = .{};
+    c.shuffle(420);
+    expect(!c.isSolved());
+
+    var res: Cube = .{};
+    res.rotBPrime();
+    res.rotU();
+    res.rotDPrime();
+    res.rotF();
+    res.rotB();
+    res.rotF();
+    res.rotUPrime();
+    res.rotL();
+    res.rotRPrime();
+    res.rotBPrime();
+    res.rotDPrime();
+    res.rotB();
+    res.rotF();
+    res.rotF();
+    res.rotL();
+    res.rotF();
+    res.rotL();
+    res.rotDPrime();
+    res.rotDPrime();
+    res.rotDPrime();
+    res.rotF();
+    res.rotRPrime();
+    res.rotFPrime();
+    res.rotRPrime();
+    res.rotBPrime();
+    res.rotDPrime();
+    res.rotFPrime();
+    expect(c.eql(res));
 }
