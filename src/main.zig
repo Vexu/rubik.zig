@@ -22,7 +22,197 @@ pub const Color = packed enum(u8) {
     }
 };
 
-pub const Cube = packed struct {
+pub const Edge = struct {
+    a: Color,
+    b: Color,
+
+    pub fn m2name(edge: Edge, first: bool) u8 {
+        switch (edge.a) {
+            .white => return switch (edge.b) {
+                .green => 'a',
+                .orange => 'b',
+                .blue => return if (first) 'c' else 'w',
+                .red => 'd',
+                else => unreachable,
+            },
+            .red => return switch (edge.b) {
+                .white => 'e',
+                .blue => 'f',
+                .yellow => 'g',
+                .green => 'h',
+                else => unreachable,
+            },
+            .blue => return switch (edge.b) {
+                .white => return if (first) 'i' else 's',
+                .orange => 'j',
+                .yellow => 'k',
+                .red => 'l',
+                else => unreachable,
+            },
+            .orange => return switch (edge.b) {
+                .white => 'm',
+                .green => 'n',
+                .yellow => 'o',
+                .blue => 'p',
+                else => unreachable,
+            },
+            .green => return switch (edge.b) {
+                .white => 'q',
+                .red => 'r',
+                .yellow => return if (first) 's' else 'i',
+                .orange => 't',
+                else => unreachable,
+            },
+            .yellow => return switch (edge.b) {
+                .blue => 'u',
+                .orange => 'v',
+                .green => return if (first) 'w' else 'c',
+                .red => 'x',
+                else => unreachable,
+            },
+        }
+    }
+
+    /// Normalize edge so that `a` is white, yellow, green or blue
+    pub fn normalize(edge: Edge) Edge {
+        if (edge.a == .white or edge.a == .yellow) {
+            return edge;
+        } else if (edge.b == .white or edge.b == .yellow or edge.b == .blue or edge.b == .green) {
+            var new =  Edge{
+                .a = edge.b,
+                .b = edge.a,
+            };
+            return new;
+        } else {
+            return edge;
+        }
+    }
+
+    pub fn eql(a: Edge, b: Edge) bool {
+        return a.a == b.a and a.b == b.b;
+    }
+};
+
+pub const Edges = packed struct {
+    ub: bool = false,
+    ur: bool = false,
+    uf: bool = false,
+    ul: bool = false,
+    fr: bool = false,
+    fl: bool = false,
+    bl: bool = false,
+    br: bool = false,
+    df: bool = false,
+    dr: bool = false,
+    db: bool = false,
+    dl: bool = false,
+
+    pub fn all(self: Edges) bool {
+        return @bitCast(u12, self) == std.math.maxInt(u12);
+    }
+
+    pub fn mark(self: *Edges, edge: Edge) void {
+        const norm = edge.normalize();
+
+        switch (norm.a) {
+            .white => switch (norm.b) {
+                .green => self.ub = true,
+                .orange => self.ur = true,
+                .blue => self.uf = true,
+                .red => self.ul = true,
+                else => unreachable,
+            },
+            .blue => switch (norm.b) {
+                .orange => self.fr = true,
+                .red => self.fl = true,
+                else => unreachable,
+            },
+            .green => switch (norm.b) {
+                .red => self.bl = true,
+                .orange => self.br = true,
+                else => unreachable,
+            },
+            .yellow => switch (norm.b) {
+                .blue => self.df = true,
+                .orange => self.dr = true,
+                .green => self.db = true,
+                .red => self.dl = true,
+                else => unreachable,
+            },
+            else => unreachable,
+        }
+    }
+
+    pub fn get(self: *Edges, edge: Edge) bool {
+        const norm = edge.normalize();
+
+        switch (norm.a) {
+            .white => return switch (norm.b) {
+                .green => self.ub,
+                .orange => self.ur,
+                .blue => self.uf,
+                .red => self.ur,
+                else => unreachable,
+            },
+            .blue => return switch (norm.b) {
+                .orange => self.fr,
+                .red => self.fl,
+                else => unreachable,
+            },
+            .green => return switch (norm.b) {
+                .red => self.bl,
+                .orange => self.br,
+                else => unreachable,
+            },
+            .yellow => return switch (norm.b) {
+                .blue => self.df,
+                .orange => self.dr,
+                .green => self.db,
+                .red => self.dl,
+                else => unreachable,
+            },
+        }
+    }
+
+    pub fn findUnsolved(self: *Edges, cube: Cube) ?Edge {
+        if (self.all()) return null;
+        while (true) {
+            var e: Edge = undefined;
+            if (!self.ub) {
+                e = .{.a = .white, .b = .green};
+            } else if (!self.ur) {
+                e = .{.a = .white, .b = .orange};
+            } else if (!self.uf) {
+                e = .{.a = .white, .b = .blue};
+            } else if (!self.ul) {
+                e = .{.a = .white, .b = .red};
+            } else if (!self.fr) {
+                e = .{.a = .blue, .b = .orange};
+            } else if (!self.fl) {
+                e = .{.a = .blue, .b = .red};
+            } else if (!self.bl) {
+                e = .{.a = .green, .b = .red};
+            } else if (!self.br) {
+                e = .{.a = .green, .b = .orange};
+            } else if (!self.dr) {
+                e = .{.a = .yellow, .b = .orange};
+            } else if (!self.db) {
+                e = .{.a = .yellow, .b = .green};
+            } else if (!self.dl) {
+                e = .{.a = .yellow, .b = .red};
+            } else return null;
+
+
+            if (e.eql(cube.edgeAt(e))) {
+                self.mark(e); // already solved
+            } else {
+                return e;
+            }
+        }
+    }
+};
+
+pub const Cube = struct {
     u: [8]Color = [_]Color{.white} ** 8,
     l: [8]Color = [_]Color{.red} ** 8,
     f: [8]Color = [_]Color{.blue} ** 8,
@@ -303,7 +493,7 @@ pub const Cube = packed struct {
         self.f[4..7].* = tmp;
     }
 
-    pub fn shuffleLog(self: *Cube, seed: u64, buf: *[32]fn (*Cube) void) []fn (*Cube) void {
+    pub fn shuffleLog(self: *Cube, seed: u64, buf: *[32][]const u8) [][]const u8 {
         var prng = std.rand.DefaultPrng.init(seed);
         const moves = prng.random.intRangeAtMost(u8, 10, 32);
         var i: u8 = 0;
@@ -317,51 +507,51 @@ pub const Cube = packed struct {
 
             switch (next) {
                 0 => {
-                    buf[i] = rotU;
+                    buf[i] = "U";
                     self.rotU();
                 },
                 1 => {
-                    buf[i] = rotL;
+                    buf[i] = "L";
                     self.rotL();
                 },
                 2 => {
-                    buf[i] = rotF;
+                    buf[i] = "F";
                     self.rotF();
                 },
                 3 => {
-                    buf[i] = rotR;
+                    buf[i] = "R";
                     self.rotR();
                 },
                 4 => {
-                    buf[i] = rotB;
+                    buf[i] = "B";
                     self.rotB();
                 },
                 5 => {
-                    buf[i] = rotD;
+                    buf[i] = "D";
                     self.rotD();
                 },
                 6 => {
-                    buf[i] = rotUPrime;
+                    buf[i] = "U'";
                     self.rotUPrime();
                 },
                 7 => {
-                    buf[i] = rotLPrime;
+                    buf[i] = "L'";
                     self.rotLPrime();
                 },
                 8 => {
-                    buf[i] = rotFPrime;
+                    buf[i] = "F'";
                     self.rotFPrime();
                 },
                 9 => {
-                    buf[i] = rotRPrime;
+                    buf[i] = "R'";
                     self.rotRPrime();
                 },
                 10 => {
-                    buf[i] = rotBPrime;
+                    buf[i] = "B'";
                     self.rotBPrime();
                 },
                 11 => {
-                    buf[i] = rotDPrime;
+                    buf[i] = "D'";
                     self.rotDPrime();
                 },
                 else => unreachable,
@@ -372,8 +562,186 @@ pub const Cube = packed struct {
     }
 
     pub fn shuffle(self: *Cube, seed: u64) void {
-        var buf: [32]fn (*Cube) void = undefined;
+        var buf: [32][]const u8 = undefined;
         _ = self.shuffleLog(seed, &buf);
+    }
+
+    pub fn edgeAt(self: Cube, edge: Edge) Edge {
+        switch (edge.a) {
+            .white => return switch (edge.b) {
+                .green => .{
+                    .a = self.u[1],
+                    .b = self.b[1],
+                },
+                .orange => .{
+                    .a = self.u[3],
+                    .b = self.r[1],
+                },
+                .blue => .{
+                    .a = self.u[5],
+                    .b = self.f[1],
+                },
+                .red => .{
+                    .a = self.u[7],
+                    .b = self.l[1],
+                },
+                else => unreachable,
+            },
+            .red => return switch (edge.b) {
+                .white => .{
+                    .a = self.l[1],
+                    .b = self.u[7],
+                },
+                .blue => .{
+                    .a = self.l[3],
+                    .b = self.f[7],
+                },
+                .yellow => .{
+                    .a = self.l[5],
+                    .b = self.d[7],
+                },
+                .green => .{
+                    .a = self.l[7],
+                    .b = self.b[3],
+                },
+                else => unreachable,
+            },
+            .blue => return switch (edge.b) {
+                .white => .{
+                    .a = self.f[1],
+                    .b = self.u[5],
+                },
+                .orange => .{
+                    .a = self.f[3],
+                    .b = self.r[7],
+                },
+                .yellow => .{
+                    .a = self.f[5],
+                    .b = self.d[1],
+                },
+                .red => .{
+                    .a = self.f[7],
+                    .b = self.l[3],
+                },
+                else => unreachable,
+            },
+            .orange => return switch (edge.b) {
+                .white => .{
+                    .a = self.r[1],
+                    .b = self.u[3],
+                },
+                .green => .{
+                    .a = self.r[3],
+                    .b = self.b[7],
+                },
+                .yellow => .{
+                    .a = self.r[5],
+                    .b = self.d[3],
+                },
+                .blue => .{
+                    .a = self.r[7],
+                    .b = self.f[3],
+                },
+                else => unreachable,
+            },
+            .green => return switch (edge.b) {
+                .white => .{
+                    .a = self.b[1],
+                    .b = self.u[1],
+                },
+                .red => .{
+                    .a = self.b[3],
+                    .b = self.l[7],
+                },
+                .yellow => .{
+                    .a = self.b[5],
+                    .b = self.d[5],
+                },
+                .orange => .{
+                    .a = self.b[7],
+                    .b = self.r[3],
+                },
+                else => unreachable,
+            },
+
+            .yellow => return switch (edge.b) {
+                .blue => .{
+                    .a = self.d[1],
+                    .b = self.f[5],
+                },
+                .orange => .{
+                    .a = self.d[3],
+                    .b = self.r[5],
+                },
+                .green => .{
+                    .a = self.d[5],
+                    .b = self.b[5],
+                },
+                .red => .{
+                    .a = self.d[7],
+                    .b = self.l[5],
+                },
+                else => unreachable,
+            },
+        }
+    }
+
+    pub fn getM2Pairs(self: Cube, buf: []u8) []const u8 {
+        assert(buf.len > 42);
+        var seen: Edges = .{};
+
+        var prev: Edge = .{
+            .a = self.d[1],
+            .b = self.f[5],
+        };
+        seen.mark(prev);
+
+        var end: Edge = .{
+            .a = .yellow,
+            .b = .blue,
+        };
+        var first_letter: ?u8 = null;
+        var i: u8 = 0;
+
+        while (true) {
+            if (prev.normalize().eql(end)) {
+                if (first_letter) |some| {
+                    buf[i] = some;
+                    buf[i+1] = prev.m2name(false);
+                    buf[i+2] = '\n';
+                    i += 3;
+                    first_letter = null;
+                } else if (prev.m2name(true) != 'u' and prev.m2name(true) != 'k') {
+                    // 'u' and 'k' should never be printed
+                    first_letter = prev.m2name(true);
+                }
+                if (seen.findUnsolved(self)) |some| {
+                    prev = some;
+                    seen.mark(prev);
+                    end = prev.normalize();
+                } else {
+                    if (first_letter) |some| {
+                        buf[i] = some;
+                        buf[i+1..][0..8].* = " parity\n".*;
+                        i += 9;
+                    }
+                    return buf[0..i];
+                }
+            }
+
+            if (first_letter) |some| {
+                buf[i] = some;
+                buf[i+1] = prev.m2name(false);
+                buf[i+2] = '\n';
+                i += 3;
+                first_letter = null;
+            } else {
+                first_letter = prev.m2name(true);
+            }
+            prev = self.edgeAt(prev);
+            seen.mark(prev);
+        }
+        unreachable;
     }
 };
 
@@ -454,4 +822,58 @@ test "shuffle" {
     res.rotDPrime();
     res.rotFPrime();
     expect(c.eql(res));
+}
+
+test "edge.eql" {
+    var a: Edge = .{
+        .a = .white,
+        .b = .blue,
+    };
+    var b: Edge = .{
+        .a = .blue,
+        .b = .white,
+    };
+    expect(!a.eql(b));
+    expect(a.eql(b.normalize()));
+}
+
+test "m2 pairs" {
+    var buf: [64]u8 = undefined;
+    var c: Cube = .{};
+    c.shuffle(6666);
+    var res = c.getM2Pairs(&buf);
+    std.testing.expectEqualStrings("th\nox\ndq\nws\nbm\njl\np parity\n", res);
+
+    // superflip
+    c = .{};
+    c.rotU();
+    c.rotR();
+    c.rotR();
+    c.rotF();
+    c.rotB();
+    c.rotR();
+    c.rotB();
+    c.rotB();
+    c.rotR();
+    c.rotU();
+    c.rotU();
+    c.rotL();
+    c.rotB();
+    c.rotB();
+    c.rotR();
+    c.rotUPrime();
+    c.rotDPrime();
+    c.rotR();
+    c.rotR();
+    c.rotF();
+    c.rotRPrime();
+    c.rotL();
+    c.rotB();
+    c.rotB();
+    c.rotU();
+    c.rotU();
+    c.rotF();
+    c.rotF();
+    res = c.getM2Pairs(&buf);
+    std.testing.expectEqualStrings("aq\nbm\ncs\nde\njp\nlf\nrh\ntn\nvo\nwi\nxg\n", res);
 }
