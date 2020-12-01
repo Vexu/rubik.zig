@@ -78,7 +78,7 @@ pub const Edge = struct {
         if (edge.a == .white or edge.a == .yellow) {
             return edge;
         } else if (edge.b == .white or edge.b == .yellow or edge.b == .blue or edge.b == .green) {
-            var new =  Edge{
+            var new = Edge{
                 .a = edge.b,
                 .b = edge.a,
             };
@@ -90,125 +90,6 @@ pub const Edge = struct {
 
     pub fn eql(a: Edge, b: Edge) bool {
         return a.a == b.a and a.b == b.b;
-    }
-};
-
-pub const Edges = packed struct {
-    ub: bool = false,
-    ur: bool = false,
-    uf: bool = false,
-    ul: bool = false,
-    fr: bool = false,
-    fl: bool = false,
-    bl: bool = false,
-    br: bool = false,
-    df: bool = false,
-    dr: bool = false,
-    db: bool = false,
-    dl: bool = false,
-
-    pub fn all(self: Edges) bool {
-        return @bitCast(u12, self) == std.math.maxInt(u12);
-    }
-
-    pub fn mark(self: *Edges, edge: Edge) void {
-        const norm = edge.normalize();
-
-        switch (norm.a) {
-            .white => switch (norm.b) {
-                .green => self.ub = true,
-                .orange => self.ur = true,
-                .blue => self.uf = true,
-                .red => self.ul = true,
-                else => unreachable,
-            },
-            .blue => switch (norm.b) {
-                .orange => self.fr = true,
-                .red => self.fl = true,
-                else => unreachable,
-            },
-            .green => switch (norm.b) {
-                .red => self.bl = true,
-                .orange => self.br = true,
-                else => unreachable,
-            },
-            .yellow => switch (norm.b) {
-                .blue => self.df = true,
-                .orange => self.dr = true,
-                .green => self.db = true,
-                .red => self.dl = true,
-                else => unreachable,
-            },
-            else => unreachable,
-        }
-    }
-
-    pub fn get(self: *Edges, edge: Edge) bool {
-        const norm = edge.normalize();
-
-        switch (norm.a) {
-            .white => return switch (norm.b) {
-                .green => self.ub,
-                .orange => self.ur,
-                .blue => self.uf,
-                .red => self.ur,
-                else => unreachable,
-            },
-            .blue => return switch (norm.b) {
-                .orange => self.fr,
-                .red => self.fl,
-                else => unreachable,
-            },
-            .green => return switch (norm.b) {
-                .red => self.bl,
-                .orange => self.br,
-                else => unreachable,
-            },
-            .yellow => return switch (norm.b) {
-                .blue => self.df,
-                .orange => self.dr,
-                .green => self.db,
-                .red => self.dl,
-                else => unreachable,
-            },
-        }
-    }
-
-    pub fn findUnsolved(self: *Edges, cube: Cube) ?Edge {
-        if (self.all()) return null;
-        while (true) {
-            var e: Edge = undefined;
-            if (!self.ub) {
-                e = .{.a = .white, .b = .green};
-            } else if (!self.ur) {
-                e = .{.a = .white, .b = .orange};
-            } else if (!self.uf) {
-                e = .{.a = .white, .b = .blue};
-            } else if (!self.ul) {
-                e = .{.a = .white, .b = .red};
-            } else if (!self.fr) {
-                e = .{.a = .blue, .b = .orange};
-            } else if (!self.fl) {
-                e = .{.a = .blue, .b = .red};
-            } else if (!self.bl) {
-                e = .{.a = .green, .b = .red};
-            } else if (!self.br) {
-                e = .{.a = .green, .b = .orange};
-            } else if (!self.dr) {
-                e = .{.a = .yellow, .b = .orange};
-            } else if (!self.db) {
-                e = .{.a = .yellow, .b = .green};
-            } else if (!self.dl) {
-                e = .{.a = .yellow, .b = .red};
-            } else return null;
-
-
-            if (e.eql(cube.edgeAt(e))) {
-                self.mark(e); // already solved
-            } else {
-                return e;
-            }
-        }
     }
 };
 
@@ -688,13 +569,13 @@ pub const Cube = struct {
 
     pub fn getM2Pairs(self: Cube, buf: []u8) []const u8 {
         assert(buf.len > 42);
-        var seen: Edges = .{};
+        var seen: [12]bool = [_]bool{false} ** 12;
 
         var prev: Edge = .{
             .a = self.d[1],
             .b = self.f[5],
         };
-        seen.mark(prev);
+        markEdge(&seen, prev);
 
         var end: Edge = .{
             .a = .yellow,
@@ -707,22 +588,22 @@ pub const Cube = struct {
             if (prev.normalize().eql(end)) {
                 if (first_letter) |some| {
                     buf[i] = some;
-                    buf[i+1] = prev.m2name(false);
-                    buf[i+2] = '\n';
+                    buf[i + 1] = prev.m2name(false);
+                    buf[i + 2] = '\n';
                     i += 3;
                     first_letter = null;
                 } else if (prev.m2name(true) != 'u' and prev.m2name(true) != 'k') {
                     // 'u' and 'k' should never be printed
                     first_letter = prev.m2name(true);
                 }
-                if (seen.findUnsolved(self)) |some| {
+                if (self.findUnsolvedEdge(&seen)) |some| {
                     prev = some;
-                    seen.mark(prev);
+                    markEdge(&seen, prev);
                     end = prev.normalize();
                 } else {
                     if (first_letter) |some| {
                         buf[i] = some;
-                        buf[i+1..][0..8].* = " parity\n".*;
+                        buf[i + 1 ..][0..8].* = " parity\n".*;
                         i += 9;
                     }
                     return buf[0..i];
@@ -731,17 +612,79 @@ pub const Cube = struct {
 
             if (first_letter) |some| {
                 buf[i] = some;
-                buf[i+1] = prev.m2name(false);
-                buf[i+2] = '\n';
+                buf[i + 1] = prev.m2name(false);
+                buf[i + 2] = '\n';
                 i += 3;
                 first_letter = null;
             } else {
                 first_letter = prev.m2name(true);
             }
             prev = self.edgeAt(prev);
-            seen.mark(prev);
+            markEdge(&seen, prev);
         }
         unreachable;
+    }
+
+    fn markEdge(edges: *[12]bool, edge: Edge) void {
+        const norm = edge.normalize();
+        var index: u8 = undefined;
+        switch (norm.a) {
+            .white => index = switch (norm.b) {
+                .green => 0,
+                .orange => 1,
+                .blue => 2,
+                .red => 3,
+                else => unreachable,
+            },
+            .blue => index = switch (norm.b) {
+                .orange => 4,
+                .red => 5,
+                else => unreachable,
+            },
+            .green => index = switch (norm.b) {
+                .red => 6,
+                .orange => 7,
+                else => unreachable,
+            },
+            .yellow => index = switch (norm.b) {
+                .blue => 8,
+                .orange => 9,
+                .green => 10,
+                .red => 11,
+                else => unreachable,
+            },
+            else => unreachable,
+        }
+
+        edges[index] = true;
+    }
+
+    fn findUnsolvedEdge(cube: Cube, edges: *[12]bool) ?Edge {
+        for (edges) |s, i| {
+            if (s) continue;
+            const e: Edge = switch (i) {
+                0 => .{ .a = .white, .b = .green },
+                1 => .{ .a = .white, .b = .orange },
+                2 => .{ .a = .white, .b = .blue },
+                3 => .{ .a = .white, .b = .red },
+                4 => .{ .a = .blue, .b = .orange },
+                5 => .{ .a = .blue, .b = .red },
+                6 => .{ .a = .green, .b = .red },
+                7 => .{ .a = .green, .b = .orange },
+                8 => continue,
+                9 => .{ .a = .yellow, .b = .orange },
+                10 => .{ .a = .yellow, .b = .green },
+                11 => .{ .a = .yellow, .b = .red },
+                else => unreachable,
+            };
+
+            if (e.eql(cube.edgeAt(e))) {
+                markEdge(edges, e); // already solved
+            } else {
+                return e;
+            }
+        }
+        return null;
     }
 };
 
