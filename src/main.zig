@@ -934,8 +934,8 @@ pub const Cube = struct {
             },
             .orange => switch (corner.b) {
                 .white => return switch (corner.c) {
-                    .blue => .{ .a = self.r[0], .b = self.u[6], .c = self.f[2] },
-                    .green => .{ .a = self.r[2], .b = self.u[4], .c = self.b[6] },
+                    .blue => .{ .a = self.r[0], .b = self.u[4], .c = self.f[2] },
+                    .green => .{ .a = self.r[2], .b = self.u[2], .c = self.b[6] },
                     else => unreachable,
                 },
                 .green => return switch (corner.c) {
@@ -949,8 +949,8 @@ pub const Cube = struct {
                     else => unreachable,
                 },
                 .blue => return switch (corner.c) {
-                    .white => .{ .a = self.r[6], .b = self.f[2], .c = self.u[4] },
-                    .yellow => .{ .a = self.r[0], .b = self.f[4], .c = self.d[2] },
+                    .yellow => .{ .a = self.r[6], .b = self.f[4], .c = self.d[2] },
+                    .white => .{ .a = self.r[0], .b = self.f[2], .c = self.u[4] },
                     else => unreachable,
                 },
                 else => unreachable,
@@ -967,13 +967,13 @@ pub const Cube = struct {
                     else => unreachable,
                 },
                 .yellow => return switch (corner.c) {
-                    .red => .{ .a = self.b[4], .b = self.d[6], .c = self.r[6] },
-                    .orange => .{ .a = self.b[6], .b = self.d[4], .c = self.l[4] },
+                    .red => .{ .a = self.b[4], .b = self.d[6], .c = self.l[6] },
+                    .orange => .{ .a = self.b[6], .b = self.d[4], .c = self.r[4] },
                     else => unreachable,
                 },
                 .orange => return switch (corner.c) {
-                    .white => .{ .a = self.b[6], .b = self.r[2], .c = self.u[2] },
-                    .yellow => .{ .a = self.b[0], .b = self.r[4], .c = self.d[4] },
+                    .yellow => .{ .a = self.b[6], .b = self.r[4], .c = self.d[4] },
+                    .white => .{ .a = self.b[0], .b = self.r[2], .c = self.u[2] },
                     else => unreachable,
                 },
                 else => unreachable,
@@ -1298,4 +1298,45 @@ test "old pochman corners" {
     c.rotF();
     res = c.getOpPairs(&buf);
     std.testing.expectEqualStrings("", res);
+}
+
+test "full blind solve" {
+    var buf: [128]u8 = undefined;
+    var c: Cube = .{};
+    
+    c.rotR();
+    c.rotBPrime();
+    c.rotUPrime();
+    c.rotRPrime();
+    c.rotUPrime();
+    c.rotB();
+    c.rotB();
+    c.rotU();
+    c.rotR();
+    c.rotR();
+    c.rotB();
+    c.rotLPrime();
+    c.rotF();
+    c.rotF();
+    c.rotDPrime();
+    c.rotB();
+    c.rotB();
+    c.rotU();
+    c.rotU();
+    c.rotF();
+    c.rotF();
+    c.rotD();
+    c.rotB();
+    c.rotB();
+    c.rotR();
+    c.rotR();
+    c.rotDPrime();
+    c.rotL();
+    c.rotL();
+    c.rotUPrime();
+
+    const edges = c.getM2Pairs(&buf);
+    std.testing.expectEqualStrings("lh\ngo\nap\nqb\nmw\ndn\nws\n", edges);
+    const corners = c.getOpPairs(buf[edges.len..]);
+    std.testing.expectEqualStrings("IS\nPG\nMQ\n", corners);
 }
