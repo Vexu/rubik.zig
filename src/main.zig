@@ -93,6 +93,180 @@ pub const Edge = struct {
     }
 };
 
+pub const Corner = struct {
+    a: Color,
+    b: Color,
+    c: Color,
+
+    pub fn opName(corner: Corner) u8 {
+        switch (corner.a) {
+            .white => switch (corner.b) {
+                .green => return switch (corner.c) {
+                    .red => 'A',
+                    .orange => 'B',
+                    else => unreachable,
+                },
+                .orange => return switch (corner.c) {
+                    .green => 'B',
+                    .blue => 'C',
+                    else => unreachable,
+                },
+                .blue => return switch (corner.c) {
+                    .orange => 'C',
+                    .red => 'D',
+                    else => unreachable,
+                },
+                .red => return switch (corner.c) {
+                    .blue => 'D',
+                    .green => 'A',
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .red => switch (corner.b) {
+                .green => return switch (corner.c) {
+                    .white => 'E',
+                    .yellow => 'H',
+                    else => unreachable,
+                },
+                .white => return switch (corner.c) {
+                    .green => 'E',
+                    .blue => 'F',
+                    else => unreachable,
+                },
+                .blue => return switch (corner.c) {
+                    .white => 'F',
+                    .yellow => 'G',
+                    else => unreachable,
+                },
+                .yellow => return switch (corner.c) {
+                    .blue => 'G',
+                    .green => 'H',
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .blue => switch (corner.b) {
+                .red => return switch (corner.c) {
+                    .white => 'I',
+                    .yellow => 'L',
+                    else => unreachable,
+                },
+                .white => return switch (corner.c) {
+                    .red => 'I',
+                    .orange => 'J',
+                    else => unreachable,
+                },
+                .orange => return switch (corner.c) {
+                    .white => 'J',
+                    .yellow => 'K',
+                    else => unreachable,
+                },
+                .yellow => return switch (corner.c) {
+                    .orange => 'K',
+                    .red => 'L',
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .orange => switch (corner.b) {
+                .blue => return switch (corner.c) {
+                    .white => 'M',
+                    .yellow => 'P',
+                    else => unreachable,
+                },
+                .white => return switch (corner.c) {
+                    .blue => 'M',
+                    .green => 'N',
+                    else => unreachable,
+                },
+                .green => return switch (corner.c) {
+                    .white => 'N',
+                    .yellow => 'O',
+                    else => unreachable,
+                },
+                .yellow => return switch (corner.c) {
+                    .green => 'O',
+                    .blue => 'P',
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .green => switch (corner.b) {
+                .orange => return switch (corner.c) {
+                    .white => 'Q',
+                    .yellow => 'T',
+                    else => unreachable,
+                },
+                .white => return switch (corner.c) {
+                    .orange => 'Q',
+                    .red => 'R',
+                    else => unreachable,
+                },
+                .red => return switch (corner.c) {
+                    .white => 'R',
+                    .yellow => 'S',
+                    else => unreachable,
+                },
+                .yellow => return switch (corner.c) {
+                    .red => 'S',
+                    .orange => 'I',
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .yellow => switch (corner.b) {
+                .red => return switch (corner.c) {
+                    .blue => 'U',
+                    .green => 'X',
+                    else => unreachable,
+                },
+                .blue => return switch (corner.c) {
+                    .red => 'U',
+                    .orange => 'V',
+                    else => unreachable,
+                },
+                .orange => return switch (corner.c) {
+                    .blue => 'V',
+                    .green => 'W',
+                    else => unreachable,
+                },
+                .green => return switch (corner.c) {
+                    .orange => 'W',
+                    .red => 'X',
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+        }
+    }
+
+    /// Normalize the corner so that `a` is white or yellow, `b` is green or blue and `c` is red or orange.
+    pub fn normalize(corner: Corner) Corner {
+        var res = corner;
+        switch (corner.a) {
+            .white, .yellow => res.a = corner.a,
+            .green, .blue => res.b = corner.a,
+            .red, .orange => res.c = corner.a,
+        }
+        switch (corner.b) {
+            .white, .yellow => res.a = corner.b,
+            .green, .blue => res.b = corner.b,
+            .red, .orange => res.c = corner.b,
+        }
+        switch (corner.c) {
+            .white, .yellow => res.a = corner.c,
+            .green, .blue => res.b = corner.c,
+            .red, .orange => res.c = corner.c,
+        }
+        return res;
+    }
+
+    pub fn eql(a: Corner, b: Corner) bool {
+        return a.a == b.a and a.b == b.b and a.c == b.c;
+    }
+};
+
 pub const Cube = struct {
     u: [8]Color = [_]Color{.white} ** 8,
     l: [8]Color = [_]Color{.red} ** 8,
@@ -686,6 +860,270 @@ pub const Cube = struct {
         }
         return null;
     }
+
+    pub fn cornerAt(self: Cube, corner: Corner) Corner {
+        switch (corner.a) {
+            .white => switch (corner.b) {
+                .green => return switch (corner.c) {
+                    .red => .{ .a = self.u[0], .b = self.b[2], .c = self.l[0] },
+                    .orange => .{ .a = self.u[2], .b = self.b[0], .c = self.r[2] },
+                    else => unreachable,
+                },
+                .orange => return switch (corner.c) {
+                    .green => .{ .a = self.u[2], .b = self.r[2], .c = self.b[0] },
+                    .blue => .{ .a = self.u[4], .b = self.r[0], .c = self.f[2] },
+                    else => unreachable,
+                },
+                .blue => return switch (corner.c) {
+                    .orange => .{ .a = self.u[4], .b = self.f[2], .c = self.r[0] },
+                    .red => .{ .a = self.u[6], .b = self.f[0], .c = self.l[2] },
+                    else => unreachable,
+                },
+                .red => return switch (corner.c) {
+                    .blue => .{ .a = self.u[6], .b = self.l[2], .c = self.f[0] },
+                    .green => .{ .a = self.u[0], .b = self.l[0], .c = self.b[2] },
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .red => switch (corner.b) {
+                .white => return switch (corner.c) {
+                    .green => .{ .a = self.l[0], .b = self.u[0], .c = self.b[2] },
+                    .blue => .{ .a = self.l[2], .b = self.u[6], .c = self.f[0] },
+                    else => unreachable,
+                },
+                .blue => return switch (corner.c) {
+                    .white => .{ .a = self.l[2], .b = self.f[0], .c = self.u[6] },
+                    .yellow => .{ .a = self.l[4], .b = self.f[6], .c = self.d[0] },
+                    else => unreachable,
+                },
+                .yellow => return switch (corner.c) {
+                    .blue => .{ .a = self.l[4], .b = self.d[0], .c = self.f[6] },
+                    .green => .{ .a = self.l[6], .b = self.d[6], .c = self.b[4] },
+                    else => unreachable,
+                },
+                .green => return switch (corner.c) {
+                    .white => .{ .a = self.l[6], .b = self.b[2], .c = self.u[0] },
+                    .yellow => .{ .a = self.l[0], .b = self.b[4], .c = self.d[6] },
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .blue => switch (corner.b) {
+                .white => return switch (corner.c) {
+                    .red => .{ .a = self.f[0], .b = self.u[6], .c = self.l[2] },
+                    .orange => .{ .a = self.f[2], .b = self.u[4], .c = self.r[0] },
+                    else => unreachable,
+                },
+                .orange => return switch (corner.c) {
+                    .white => .{ .a = self.f[2], .b = self.r[0], .c = self.u[4] },
+                    .yellow => .{ .a = self.f[4], .b = self.r[6], .c = self.d[2] },
+                    else => unreachable,
+                },
+                .yellow => return switch (corner.c) {
+                    .orange => .{ .a = self.f[4], .b = self.d[2], .c = self.r[6] },
+                    .red => .{ .a = self.f[6], .b = self.d[0], .c = self.l[4] },
+                    else => unreachable,
+                },
+                .red => return switch (corner.c) {
+                    .white => .{ .a = self.f[6], .b = self.l[2], .c = self.u[6] },
+                    .yellow => .{ .a = self.f[0], .b = self.l[4], .c = self.d[0] },
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .orange => switch (corner.b) {
+                .white => return switch (corner.c) {
+                    .blue => .{ .a = self.r[0], .b = self.u[6], .c = self.f[2] },
+                    .green => .{ .a = self.r[2], .b = self.u[4], .c = self.b[6] },
+                    else => unreachable,
+                },
+                .green => return switch (corner.c) {
+                    .white => .{ .a = self.r[2], .b = self.b[0], .c = self.u[2] },
+                    .yellow => .{ .a = self.r[4], .b = self.b[6], .c = self.d[4] },
+                    else => unreachable,
+                },
+                .yellow => return switch (corner.c) {
+                    .green => .{ .a = self.r[4], .b = self.d[4], .c = self.f[4] },
+                    .blue => .{ .a = self.r[6], .b = self.d[2], .c = self.b[6] },
+                    else => unreachable,
+                },
+                .blue => return switch (corner.c) {
+                    .white => .{ .a = self.r[6], .b = self.f[2], .c = self.u[4] },
+                    .yellow => .{ .a = self.r[0], .b = self.f[4], .c = self.d[2] },
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .green => switch (corner.b) {
+                .white => return switch (corner.c) {
+                    .orange => .{ .a = self.b[0], .b = self.u[2], .c = self.r[2] },
+                    .red => .{ .a = self.b[2], .b = self.u[0], .c = self.l[0] },
+                    else => unreachable,
+                },
+                .red => return switch (corner.c) {
+                    .white => .{ .a = self.b[2], .b = self.l[0], .c = self.u[0] },
+                    .yellow => .{ .a = self.b[4], .b = self.l[6], .c = self.d[6] },
+                    else => unreachable,
+                },
+                .yellow => return switch (corner.c) {
+                    .red => .{ .a = self.b[4], .b = self.d[6], .c = self.r[6] },
+                    .orange => .{ .a = self.b[6], .b = self.d[4], .c = self.l[4] },
+                    else => unreachable,
+                },
+                .orange => return switch (corner.c) {
+                    .white => .{ .a = self.b[6], .b = self.r[2], .c = self.u[2] },
+                    .yellow => .{ .a = self.b[0], .b = self.r[4], .c = self.d[4] },
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .yellow => switch (corner.b) {
+                .blue => return switch (corner.c) {
+                    .red => .{ .a = self.d[0], .b = self.f[6], .c = self.l[4] },
+                    .orange => .{ .a = self.d[2], .b = self.f[4], .c = self.r[6] },
+                    else => unreachable,
+                },
+                .orange => return switch (corner.c) {
+                    .blue => .{ .a = self.d[2], .b = self.r[6], .c = self.f[4] },
+                    .green => .{ .a = self.d[4], .b = self.r[4], .c = self.b[6] },
+                    else => unreachable,
+                },
+                .green => return switch (corner.c) {
+                    .orange => .{ .a = self.d[4], .b = self.b[6], .c = self.r[4] },
+                    .red => .{ .a = self.d[6], .b = self.b[4], .c = self.l[6] },
+                    else => unreachable,
+                },
+                .red => return switch (corner.c) {
+                    .green => .{ .a = self.d[6], .b = self.l[6], .c = self.b[6] },
+                    .blue => .{ .a = self.d[0], .b = self.l[4], .c = self.f[4] },
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+        }
+    }
+
+    pub fn getOpPairs(self: Cube, buf: []u8) []const u8 {
+        assert(buf.len > 8 * 3);
+        var seen: [8]bool = [_]bool{false} ** 8;
+
+        var prev: Corner = .{
+            .a = self.l[0],
+            .b = self.u[0],
+            .c = self.b[2],
+        };
+        markCorner(&seen, prev);
+
+        var end: Corner = .{
+            .a = .white,
+            .b = .green,
+            .c = .red,
+        };
+        var first_letter: ?u8 = null;
+        var i: u8 = 0;
+
+        while (true) {
+            if (prev.normalize().eql(end)) {
+                if (first_letter) |some| {
+                    buf[i] = some;
+                    buf[i + 1] = prev.opName();
+                    buf[i + 2] = '\n';
+                    i += 3;
+                    first_letter = null;
+                } else switch (prev.opName()) {
+                    'A', 'E', 'R' => {},
+                    else => first_letter = prev.opName(),
+                }
+
+                if (self.findUnsolvedCorner(&seen)) |some| {
+                    prev = some;
+                    markCorner(&seen, prev);
+                    end = prev.normalize();
+                } else {
+                    if (first_letter) |some| {
+                        buf[i] = some;
+                        buf[i + 1] = '\n';
+                        i += 2;
+                    }
+                    return buf[0..i];
+                }
+            }
+
+            if (first_letter) |some| {
+                buf[i] = some;
+                buf[i + 1] = prev.opName();
+                buf[i + 2] = '\n';
+                i += 3;
+                first_letter = null;
+            } else {
+                first_letter = prev.opName();
+            }
+            prev = self.cornerAt(prev);
+            markCorner(&seen, prev);
+        }
+        unreachable;
+    }
+
+    fn markCorner(corners: *[8]bool, corner: Corner) void {
+        const norm = corner.normalize();
+        var index: u8 = undefined;
+        switch (norm.a) {
+            .white => switch (norm.b) {
+                .green => index = switch (norm.c) {
+                    .red => 0,
+                    .orange => 1,
+                    else => unreachable,
+                },
+                .blue => index = switch (norm.c) {
+                    .orange => 2,
+                    .red => 3,
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .yellow => switch (norm.b) {
+                .blue => index = switch (norm.c) {
+                    .red => 4,
+                    .orange => 5,
+                    else => unreachable,
+                },
+                .green => index = switch (norm.c) {
+                    .orange => 6,
+                    .red => 7,
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            else => unreachable,
+        }
+
+        corners[index] = true;
+    }
+
+    fn findUnsolvedCorner(cube: Cube, corners: *[8]bool) ?Corner {
+        for (corners) |s, i| {
+            if (s) continue;
+            const c: Corner = switch (i) {
+                0 => continue,
+                1 => .{ .a = .white, .b = .green, .c = .orange },
+                2 => .{ .a = .white, .b = .blue, .c = .orange },
+                3 => .{ .a = .white, .b = .blue, .c = .red },
+                4 => .{ .a = .yellow, .b = .blue, .c = .red },
+                5 => .{ .a = .yellow, .b = .blue, .c = .orange },
+                6 => .{ .a = .yellow, .b = .green, .c = .orange },
+                7 => .{ .a = .yellow, .b = .green, .c = .red },
+                else => unreachable,
+            };
+
+            if (c.eql(cube.cornerAt(c))) {
+                markCorner(corners, c); // already solved
+            } else {
+                return c;
+            }
+        }
+        return null;
+    }
 };
 
 test "isSolved" {
@@ -819,4 +1257,45 @@ test "m2 pairs" {
     c.rotF();
     res = c.getM2Pairs(&buf);
     std.testing.expectEqualStrings("aq\nbm\ncs\nde\njp\nlf\nrh\ntn\nvo\nwi\nxg\n", res);
+}
+
+test "old pochman corners" {
+    var buf: [64]u8 = undefined;
+    var c: Cube = .{};
+    c.shuffle(6666);
+    var res = c.getOpPairs(&buf);
+    std.testing.expectEqualStrings("BW\nLN\nCV\nMD\nF\n", res);
+
+    // superflip
+    c = .{};
+    c.rotU();
+    c.rotR();
+    c.rotR();
+    c.rotF();
+    c.rotB();
+    c.rotR();
+    c.rotB();
+    c.rotB();
+    c.rotR();
+    c.rotU();
+    c.rotU();
+    c.rotL();
+    c.rotB();
+    c.rotB();
+    c.rotR();
+    c.rotUPrime();
+    c.rotDPrime();
+    c.rotR();
+    c.rotR();
+    c.rotF();
+    c.rotRPrime();
+    c.rotL();
+    c.rotB();
+    c.rotB();
+    c.rotU();
+    c.rotU();
+    c.rotF();
+    c.rotF();
+    res = c.getOpPairs(&buf);
+    std.testing.expectEqualStrings("", res);
 }
