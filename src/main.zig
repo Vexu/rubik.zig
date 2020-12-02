@@ -1124,6 +1124,79 @@ pub const Cube = struct {
         }
         return null;
     }
+
+    pub fn doMoves(self: *Cube, moves: []const u8) error{InvalidCharacter}!void {
+        var it = std.mem.tokenize(moves, " ");
+        while (it.next()) |move| {
+            assert(move.len != 0); // guaranteed by mem.tokenize
+
+            var inverse = false;
+            var double = false;
+            if (move.len > 1) {
+                switch (move[1]) {
+                    '0' => continue,
+                    '1' => {},
+                    '2' => double = true,
+                    '3' => inverse = true,
+                    '4' => continue,
+                    '\'' => inverse = true,
+                    else => return error.InvalidCharacter,
+                }
+                if (move.len > 2) return error.InvalidCharacter;
+            }
+            switch (move[0]) {
+                'u', 'U' => if (inverse) {
+                    self.rotUPrime();
+                } else if (double) {
+                    self.rotU();
+                    self.rotU();
+                } else {
+                    self.rotU();
+                },
+                'l', 'L' =>  if (inverse) {
+                    self.rotLPrime();
+                } else if (double) {
+                    self.rotL();
+                    self.rotL();
+                } else {
+                    self.rotL();
+                },
+                'f', 'F' =>  if (inverse) {
+                    self.rotFPrime();
+                } else if (double) {
+                    self.rotF();
+                    self.rotF();
+                } else {
+                    self.rotF();
+                },
+                'r', 'R' =>  if (inverse) {
+                    self.rotRPrime();
+                } else if (double) {
+                    self.rotR();
+                    self.rotR();
+                } else {
+                    self.rotR();
+                },
+                'b', 'B' =>  if (inverse) {
+                    self.rotBPrime();
+                } else if (double) {
+                    self.rotB();
+                    self.rotB();
+                } else {
+                    self.rotB();
+                },
+                'd', 'D' =>  if (inverse) {
+                    self.rotDPrime();
+                } else if (double) {
+                    self.rotD();
+                    self.rotD();
+                } else {
+                    self.rotD();
+                },
+                else => return error.InvalidCharacter,
+            }
+        }
+    }
 };
 
 test "isSolved" {
@@ -1339,4 +1412,43 @@ test "full blind solve" {
     std.testing.expectEqualStrings("lh\ngo\nap\nqb\nmw\ndn\nws\n", edges);
     const corners = c.getOpPairs(buf[edges.len..]);
     std.testing.expectEqualStrings("IS\nPG\nMQ\n", corners);
+}
+
+test "doMoves" {
+    var a: Cube = .{};
+    a.rotR();
+    a.rotBPrime();
+    a.rotUPrime();
+    a.rotRPrime();
+    a.rotUPrime();
+    a.rotB();
+    a.rotB();
+    a.rotU();
+    a.rotR();
+    a.rotR();
+    a.rotB();
+    a.rotLPrime();
+    a.rotF();
+    a.rotF();
+    a.rotDPrime();
+    a.rotB();
+    a.rotB();
+    a.rotU();
+    a.rotU();
+    a.rotF();
+    a.rotF();
+    a.rotD();
+    a.rotB();
+    a.rotB();
+    a.rotR();
+    a.rotR();
+    a.rotDPrime();
+    a.rotL();
+    a.rotL();
+    a.rotUPrime();
+
+    var b: Cube = .{};
+    b.doMoves("R B' U' R' U' B2 U R2 B L' F2 D' B2 U2 F2 D B2 R2 D' L2 U'") catch unreachable;
+
+    expect(a.eql(b));
 }
