@@ -925,8 +925,8 @@ pub const Cube = struct {
                     else => unreachable,
                 },
                 .red => return switch (corner.c) {
-                    .white => .{ .a = self.f[6], .b = self.l[2], .c = self.u[6] },
-                    .yellow => .{ .a = self.f[0], .b = self.l[4], .c = self.d[0] },
+                    .white => .{ .a = self.f[0], .b = self.l[2], .c = self.u[6] },
+                    .yellow => .{ .a = self.f[6], .b = self.l[4], .c = self.d[0] },
                     else => unreachable,
                 },
                 else => unreachable,
@@ -943,8 +943,8 @@ pub const Cube = struct {
                     else => unreachable,
                 },
                 .yellow => return switch (corner.c) {
-                    .green => .{ .a = self.r[4], .b = self.d[4], .c = self.f[4] },
-                    .blue => .{ .a = self.r[6], .b = self.d[2], .c = self.b[6] },
+                    .green => .{ .a = self.r[4], .b = self.d[4], .c = self.b[6] },
+                    .blue => .{ .a = self.r[6], .b = self.d[2], .c = self.f[4] },
                     else => unreachable,
                 },
                 .blue => return switch (corner.c) {
@@ -994,8 +994,8 @@ pub const Cube = struct {
                     else => unreachable,
                 },
                 .red => return switch (corner.c) {
-                    .green => .{ .a = self.d[6], .b = self.l[6], .c = self.b[6] },
-                    .blue => .{ .a = self.d[0], .b = self.l[4], .c = self.f[4] },
+                    .green => .{ .a = self.d[6], .b = self.l[6], .c = self.b[4] },
+                    .blue => .{ .a = self.d[0], .b = self.l[4], .c = self.f[6] },
                     else => unreachable,
                 },
                 else => unreachable,
@@ -1375,42 +1375,19 @@ test "old pochman corners" {
 test "full blind solve" {
     var buf: [128]u8 = undefined;
     var c: Cube = .{};
-    
-    c.rotR();
-    c.rotBPrime();
-    c.rotUPrime();
-    c.rotRPrime();
-    c.rotUPrime();
-    c.rotB();
-    c.rotB();
-    c.rotU();
-    c.rotR();
-    c.rotR();
-    c.rotB();
-    c.rotLPrime();
-    c.rotF();
-    c.rotF();
-    c.rotDPrime();
-    c.rotB();
-    c.rotB();
-    c.rotU();
-    c.rotU();
-    c.rotF();
-    c.rotF();
-    c.rotD();
-    c.rotB();
-    c.rotB();
-    c.rotR();
-    c.rotR();
-    c.rotDPrime();
-    c.rotL();
-    c.rotL();
-    c.rotUPrime();
+    c.doMoves("R B' U' R' U' B2 U R2 B L' F2 D' B2 U2 F2 D B2 R2 D' L2 U'") catch unreachable;
 
-    const edges = c.getM2Pairs(&buf);
+    var edges = c.getM2Pairs(&buf);
     std.testing.expectEqualStrings("lh\ngo\nap\nqb\nmw\ndn\nws\n", edges);
-    const corners = c.getOpPairs(buf[edges.len..]);
+    var corners = c.getOpPairs(buf[edges.len..]);
     std.testing.expectEqualStrings("IS\nPG\nMQ\n", corners);
+
+    c = .{};
+    c.doMoves("D R' U' F2 R2 F2 L2 F2 R' D2 F' R' F R2 B' U' L2 D2 B U' F2 U R F D2") catch unreachable;
+    edges = c.getM2Pairs(&buf);
+    std.testing.expectEqualStrings("md\npc\nat\nxl\nho\nia\n", edges);
+    corners = c.getOpPairs(buf[edges.len..]);
+    std.testing.expectEqualStrings("KB\nMX\nOD\nUG\n", corners);
 }
 
 test "doMoves" {
