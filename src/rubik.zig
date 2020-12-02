@@ -359,7 +359,6 @@ pub const Cube = struct {
             \\      +-+-+-+
             \\      |{s}|{s}|{s}|
             \\      +-+-+-+
-            \\
         , .{ self.b[2].toStr(), self.b[1].toStr(), self.b[0].toStr() });
     }
 
@@ -1451,4 +1450,81 @@ test "doMoves" {
     b.doMoves("R B' U' R' U' B2 U R2 B L' F2 D' B2 U2 F2 D B2 R2 D' L2 U'") catch unreachable;
 
     expect(a.eql(b));
+}
+
+pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
+    std.debug.print(format ++ "\n", args);
+    std.process.exit(1);
+}
+
+const usage =
+    \\Usage: rubik [command] [args]
+    \\
+    \\Commands:
+    \\
+    \\  do [moves]              Do the given moves and print the result
+    \\  help                    Print this help and exit
+    \\  solve-blind [moves]     Solve the m2 and Old Pochman pairs for this scramble
+    \\  version                 Print version number and exit
+    \\
+;
+
+var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
+const gpa = &general_purpose_allocator.allocator;
+
+pub fn main() !void {
+    const stdout = std.io.getStdOut().writer();
+    defer _ = general_purpose_allocator.deinit();
+
+    var arena_instance = std.heap.ArenaAllocator.init(gpa);
+    defer arena_instance.deinit();
+    const args = try std.process.argsAlloc(&arena_instance.allocator);
+
+    if (args.len <= 1) {
+        std.debug.print("{}", .{usage});
+        fatal("expected command argument", .{});
+    }
+
+    if (std.mem.eql(u8, args[1], "do")) {
+        if (args.len != 3) {
+            fatal("expected exactly one scramble argument", .{});
+        }
+        var cube: Cube = .{};
+        cube.doMoves(args[2]) catch {
+            fatal("invalid scramble: \"{}\"", .{args[2]});
+        };
+
+        try stdout.print("{}\n", .{cube});
+    } else if (std.mem.eql(u8, args[1], "help")) {
+        try stdout.writeAll(usage);
+    } else if (std.mem.eql(u8, args[1], "solve-blind")) {
+        if (args.len != 3) {
+            fatal("expected exactly one scramble argument", .{});
+        }
+        var cube: Cube = .{};
+        cube.doMoves(args[2]) catch {
+            fatal("invalid scramble: \"{}\"", .{args[2]});
+        };
+
+        var buf: [128]u8 = undefined;
+        const edges = cube.getM2Pairs(&buf);
+        const corners = cube.getOpPairs(buf[edges.len..]);
+
+        if (edges.len == 0) {
+            try stdout.writeAll("edges solved\n");
+        } else {
+            try stdout.print("edges:\n{s}", .{edges});
+        }
+
+        if (corners.len == 0) {
+            try stdout.writeAll("corners solved\n");
+        } else {
+            try stdout.print("corners:\n{s}", .{corners});
+        }
+    } else if (std.mem.eql(u8, args[1], "version")) {
+        try stdout.print("{}", .{@import("build_options").rubik_version});
+    } else {
+        std.debug.print("{}", .{usage});
+        fatal("unknown command: {}", .{args[1]});
+    }
 }
