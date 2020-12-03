@@ -740,16 +740,19 @@ pub const Cube = struct {
 
         while (true) {
             if (prev.normalize().eql(end)) {
-                if (first_letter) |some| {
-                    buf[i] = some;
-                    buf[i + 1] = prev.m2name(false);
-                    buf[i + 2] = '\n';
-                    i += 3;
-                    first_letter = null;
-                } else if (prev.m2name(true) != 'u' and prev.m2name(true) != 'k') {
+                if (prev.m2name(true) != 'u' and prev.m2name(true) != 'k') {
                     // 'u' and 'k' should never be printed
-                    first_letter = prev.m2name(true);
+                    if (first_letter) |some| {
+                        buf[i] = some;
+                        buf[i + 1] = prev.m2name(false);
+                        buf[i + 2] = '\n';
+                        i += 3;
+                        first_letter = null;
+                    } else {
+                        first_letter = prev.m2name(true);
+                    }
                 }
+
                 if (self.findUnsolvedEdge(&seen)) |some| {
                     prev = some;
                     markEdge(&seen, prev);
@@ -883,8 +886,8 @@ pub const Cube = struct {
                     else => unreachable,
                 },
                 .green => return switch (corner.c) {
-                    .white => .{ .a = self.l[6], .b = self.b[2], .c = self.u[0] },
-                    .yellow => .{ .a = self.l[0], .b = self.b[4], .c = self.d[6] },
+                    .yellow => .{ .a = self.l[6], .b = self.b[4], .c = self.d[6] },
+                    .white => .{ .a = self.l[0], .b = self.b[2], .c = self.u[0] },
                     else => unreachable,
                 },
                 else => unreachable,
@@ -906,8 +909,8 @@ pub const Cube = struct {
                     else => unreachable,
                 },
                 .red => return switch (corner.c) {
-                    .white => .{ .a = self.f[0], .b = self.l[2], .c = self.u[6] },
                     .yellow => .{ .a = self.f[6], .b = self.l[4], .c = self.d[0] },
+                    .white => .{ .a = self.f[0], .b = self.l[2], .c = self.u[6] },
                     else => unreachable,
                 },
                 else => unreachable,
@@ -1005,15 +1008,17 @@ pub const Cube = struct {
 
         while (true) {
             if (prev.normalize().eql(end)) {
-                if (first_letter) |some| {
-                    buf[i] = some;
-                    buf[i + 1] = prev.opName();
-                    buf[i + 2] = '\n';
-                    i += 3;
-                    first_letter = null;
-                } else switch (prev.opName()) {
+                switch (prev.opName()) {
                     'A', 'E', 'R' => {},
-                    else => first_letter = prev.opName(),
+                    else => if (first_letter) |some| {
+                        buf[i] = some;
+                        buf[i + 1] = prev.opName();
+                        buf[i + 2] = '\n';
+                        i += 3;
+                        first_letter = null;
+                    } else {
+                        first_letter = prev.opName();
+                    },
                 }
 
                 if (self.findUnsolvedCorner(&seen)) |some| {
@@ -1224,7 +1229,7 @@ test "cross" {
 
 test "shuffle" {
     var log_buf: [32][]const u8 = undefined;
-    var buf: [32*3]u8 = undefined;
+    var buf: [32 * 3]u8 = undefined;
 
     var c: Cube = .{};
     const log = c.shuffleLog(420, &log_buf);
@@ -1352,6 +1357,13 @@ test "full blind solve" {
     std.testing.expectEqualStrings("md\npc\nat\nxl\nho\nia\n", edges);
     corners = c.getOpPairs(buf[edges.len..]);
     std.testing.expectEqualStrings("KB\nMX\nOD\nUG\n", corners);
+
+    c = .{};
+    c.doMoves("R' U2 F' B R L R L' R' U L' R") catch unreachable;
+    edges = c.getM2Pairs(&buf);
+    std.testing.expectEqualStrings("fg\nca\nto\nea\nbj\nsr\nm parity\n", edges);
+    corners = c.getOpPairs(buf[edges.len..]);
+    std.testing.expectEqualStrings("GQ\nCH\nDW\nDV\nP\n", corners);
 }
 
 test "doMoves" {
