@@ -548,69 +548,50 @@ pub const Cube = struct {
     }
 
     pub fn shuffleLog(self: *Cube, seed: u64, buf: *[32][]const u8) [][]const u8 {
+        const move_strs: [18][]const u8 = .{
+            "U",  "L",  "F",  "R",  "B",  "D",
+            "U'", "L'", "F'", "R'", "B'", "D'",
+            "U2", "L2", "F2", "R2", "B2", "D2",
+        };
+
         var prng = std.rand.DefaultPrng.init(seed);
         const moves = prng.random.intRangeAtMost(u8, 10, 32);
         var i: u8 = 0;
         var prev: u8 = 99;
+        var double = false;
         while (i < moves) {
             const next = prng.random.intRangeAtMost(u8, 0, 11);
             if ((next + 6) % 12 == prev) {
+                double = false;
                 continue;
+            } else if (next == prev) {
+                if (double) {
+                    continue;
+                }
+                double = true;
+                buf[i - 1] = move_strs[(next % 6) + 12];
+            } else {
+                double = false;
+                buf[i] = move_strs[next];
+                i += 1;
             }
             prev = next;
 
             switch (next) {
-                0 => {
-                    buf[i] = "U";
-                    self.rotU();
-                },
-                1 => {
-                    buf[i] = "L";
-                    self.rotL();
-                },
-                2 => {
-                    buf[i] = "F";
-                    self.rotF();
-                },
-                3 => {
-                    buf[i] = "R";
-                    self.rotR();
-                },
-                4 => {
-                    buf[i] = "B";
-                    self.rotB();
-                },
-                5 => {
-                    buf[i] = "D";
-                    self.rotD();
-                },
-                6 => {
-                    buf[i] = "U'";
-                    self.rotUPrime();
-                },
-                7 => {
-                    buf[i] = "L'";
-                    self.rotLPrime();
-                },
-                8 => {
-                    buf[i] = "F'";
-                    self.rotFPrime();
-                },
-                9 => {
-                    buf[i] = "R'";
-                    self.rotRPrime();
-                },
-                10 => {
-                    buf[i] = "B'";
-                    self.rotBPrime();
-                },
-                11 => {
-                    buf[i] = "D'";
-                    self.rotDPrime();
-                },
+                0 => self.rotU(),
+                1 => self.rotL(),
+                2 => self.rotF(),
+                3 => self.rotR(),
+                4 => self.rotB(),
+                5 => self.rotD(),
+                6 => self.rotUPrime(),
+                7 => self.rotLPrime(),
+                8 => self.rotFPrime(),
+                9 => self.rotRPrime(),
+                10 => self.rotBPrime(),
+                11 => self.rotDPrime(),
                 else => unreachable,
             }
-            i += 1;
         }
         return buf[0..i];
     }
@@ -1152,7 +1133,7 @@ pub const Cube = struct {
                 } else {
                     self.rotU();
                 },
-                'l', 'L' =>  if (inverse) {
+                'l', 'L' => if (inverse) {
                     self.rotLPrime();
                 } else if (double) {
                     self.rotL();
@@ -1160,7 +1141,7 @@ pub const Cube = struct {
                 } else {
                     self.rotL();
                 },
-                'f', 'F' =>  if (inverse) {
+                'f', 'F' => if (inverse) {
                     self.rotFPrime();
                 } else if (double) {
                     self.rotF();
@@ -1168,7 +1149,7 @@ pub const Cube = struct {
                 } else {
                     self.rotF();
                 },
-                'r', 'R' =>  if (inverse) {
+                'r', 'R' => if (inverse) {
                     self.rotRPrime();
                 } else if (double) {
                     self.rotR();
@@ -1176,7 +1157,7 @@ pub const Cube = struct {
                 } else {
                     self.rotR();
                 },
-                'b', 'B' =>  if (inverse) {
+                'b', 'B' => if (inverse) {
                     self.rotBPrime();
                 } else if (double) {
                     self.rotB();
@@ -1184,7 +1165,7 @@ pub const Cube = struct {
                 } else {
                     self.rotB();
                 },
-                'd', 'D' =>  if (inverse) {
+                'd', 'D' => if (inverse) {
                     self.rotDPrime();
                 } else if (double) {
                     self.rotD();
@@ -1242,38 +1223,21 @@ test "cross" {
 }
 
 test "shuffle" {
+    var log_buf: [32][]const u8 = undefined;
+    var buf: [32*3]u8 = undefined;
+
     var c: Cube = .{};
-    c.shuffle(420);
+    const log = c.shuffleLog(420, &log_buf);
+
+    var fib = std.io.fixedBufferStream(&buf);
+    const writer = fib.writer();
+    for (log) |l| {
+        try writer.print("{} ", .{l});
+    }
     expect(!c.isSolved());
 
     var res: Cube = .{};
-    res.rotBPrime();
-    res.rotU();
-    res.rotDPrime();
-    res.rotF();
-    res.rotB();
-    res.rotF();
-    res.rotUPrime();
-    res.rotL();
-    res.rotRPrime();
-    res.rotBPrime();
-    res.rotDPrime();
-    res.rotB();
-    res.rotF();
-    res.rotF();
-    res.rotL();
-    res.rotF();
-    res.rotL();
-    res.rotDPrime();
-    res.rotDPrime();
-    res.rotDPrime();
-    res.rotF();
-    res.rotRPrime();
-    res.rotFPrime();
-    res.rotRPrime();
-    res.rotBPrime();
-    res.rotDPrime();
-    res.rotFPrime();
+    try res.doMoves(fib.getWritten());
     expect(c.eql(res));
 }
 
@@ -1331,7 +1295,7 @@ test "m2 pairs" {
     std.testing.expectEqualStrings("aq\nbm\ncs\nde\njp\nlf\nrh\ntn\nvo\nwi\nxg\n", res);
 }
 
-test "old pochman corners" {
+test "old pochmann corners" {
     var buf: [64]u8 = undefined;
     var c: Cube = .{};
     c.shuffle(6666);
@@ -1441,7 +1405,8 @@ const usage =
     \\
     \\  do [moves]              Do the given moves and print the result
     \\  help                    Print this help and exit
-    \\  solve-blind [moves]     Solve the m2 and Old Pochman pairs for this scramble
+    \\  scramble                Generate a scramble
+    \\  solve-blind [moves]     Solve the m2 and Old Pochmann pairs for this scramble
     \\  version                 Print version number and exit
     \\
 ;
@@ -1474,6 +1439,18 @@ pub fn main() !void {
         try stdout.print("{}\n", .{cube});
     } else if (std.mem.eql(u8, args[1], "help")) {
         try stdout.writeAll(usage);
+    } else if (std.mem.eql(u8, args[1], "scramble")) {
+        var seed_buf: [8]u8 = undefined;
+        try std.crypto.randomBytes(&seed_buf);
+        const seed = std.mem.readIntLittle(u64, &seed_buf);
+
+        var buf: [32][]const u8 = undefined;
+        var cube: Cube = .{};
+        const log = cube.shuffleLog(seed, &buf);
+        for (log) |l| {
+            try stdout.print("{} ", .{l});
+        }
+        try stdout.writeByte('\n');
     } else if (std.mem.eql(u8, args[1], "solve-blind")) {
         if (args.len != 3) {
             fatal("expected exactly one scramble argument", .{});
